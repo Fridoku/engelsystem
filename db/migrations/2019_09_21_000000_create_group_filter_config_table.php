@@ -7,14 +7,14 @@ use Engelsystem\Database\Migration\Migration;
 use Illuminate\Database\QueryException;
 use Illuminate\Database\Schema\Blueprint;
 
-class CreateGlobalFilterConfigTable extends Migration
+class CreateGroupFilterConfigTable extends Migration
 {
     /**
      * Run the migration
      */
     public function up()
     {
-        $this->schema->create('globalFilters', function (Blueprint $table) {
+        $this->schema->create('groupFilters', function (Blueprint $table) {
             $table->integer('id', $autoIncrement=true)->unique();
             $table->boolean('showFilter');
             $table->string('serialized');
