@@ -91,6 +91,31 @@ class ShiftsFilter
     }
 
     /**
+     * @return string serialized representation of the filter for storage in the database
+     */
+    public function serializeFilter()
+    {
+      return serialize($this);
+    }
+
+    /**
+     * Load a serialized Filter
+     *
+     * @param string $string serialized representation of the filter
+     */
+    public function loadSerialized($string)
+    {
+      $loaded = unserialize($string);
+
+      $this->filled = $loaded->filled;
+      $this->rooms = $loaded->rooms;
+      $this->types = $loaded->types;
+      $this->startTime = $loaded->startTime;
+      $this->endTime = $loaded->endTime;
+
+    }
+
+    /**
      * @return int unix timestamp
      */
     public function getStartTime()
