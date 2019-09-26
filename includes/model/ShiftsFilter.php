@@ -35,11 +35,15 @@ class ShiftsFilter
     /** @var int[] */
     private $types = [];
 
+
     /** @var int unix timestamp */
     private $startTime = null;
 
     /** @var int unix timestamp */
     private $endTime = null;
+
+    /** @var boolean[] */
+    private $showFilters = true;
 
     /**
      * ShiftsFilter constructor.
@@ -91,11 +95,11 @@ class ShiftsFilter
     }
 
     /**
-     * @return string serialized representation of the filter for storage in the database
+     * @return string base64 encoded serialized representation of the filter for storage in the database
      */
     public function serializeFilter()
     {
-      return serialize($this);
+      return base64_encode(serialize($this));
     }
 
     /**
@@ -105,7 +109,7 @@ class ShiftsFilter
      */
     public function loadSerialized($string)
     {
-      $loaded = unserialize($string);
+      $loaded = unserialize(base64_decode($string));
 
       $this->filled = $loaded->filled;
       $this->rooms = $loaded->rooms;
@@ -200,6 +204,23 @@ class ShiftsFilter
     {
         $this->userShiftsAdmin = $userShiftsAdmin;
     }
+
+    /**
+     * @return bool
+     */
+    public function isShowFilter()
+    {
+        return $this->showFilters;
+    }
+
+    /**
+     * @param bool $showFilters
+     */
+    public function setShowFilter($showFilters)
+    {
+        $this->showFilters = $showFilters;
+    }
+
 
     /**
      * @return int[]

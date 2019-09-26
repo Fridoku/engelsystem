@@ -141,6 +141,7 @@ function load_types()
             SELECT
                 `AngelTypes`.`id`,
                 `AngelTypes`.`name`,
+                `AngelTypes`.`type_filter`,
                 (
                     `AngelTypes`.`restricted`=0
                     OR (
@@ -176,44 +177,60 @@ function view_user_shifts()
 
     $session = session();
     $ical_shifts = [];
+
     $days = load_days();
     $rooms = load_rooms();
     $types = load_types();
 
-    if (!$session->has('shifts-filter')) {
-        $room_ids = [
-            $rooms[0]['id']
-        ];
-        $type_ids = array_map('get_ids_from_array', $types);
-        $shiftsFilter = new ShiftsFilter(auth()->can('user_shifts_admin'), $room_ids, $type_ids);
-        $session->set('shifts-filter', $shiftsFilter->sessionExport());
+    $typeFilter = DB::selectOne('
+        SELECT `serialized`, `showFilter`
+        FROM `GroupFilters`
+        WHERE `GroupFilters`.`id` IN (
+          SELECT `AngelTypes`.`type_filter`
+          FROM `AngelTypes`
+          WHERE `AngelTypes`.`id` IN (
+            SELECT `UserAngelTypes`.`angeltype_id`
+            FROM `UserAngelTypes`
+            WHERE `UserAngelTypes`.`user_id` = ?
+          )
+        )
+        ORDER BY `priority` DESC, `id` DESC
+      ', [$user->id]);
+
+    //Initialize the filter with default values
+    $room_ids = array_map('get_ids_from_array', $rooms);
+    $type_ids = array_map('get_ids_from_array', $types);
+    $shiftsFilter = new ShiftsFilter(auth()->can('user_shifts_admin'), $room_ids, $type_ids);
+
+    //There are three Cases on how to generate the Filter:
+
+
+    if($typeFilter == null) {
+      //1:
+      //No TypeFilter was found for the user
+      //-> Filter is restored from the session and then updated from the request
+      $shiftsFilter->sessionImport($session->get('shifts-filter'));
+      update_ShiftsFilter($shiftsFilter, auth()->can('user_shifts_admin'), load_days());
+    } elseif ($typeFilter['showFilter']) {
+      //2:
+      //A TypeFilter was found for the user and user is allowed to change his own filter
+      //-> Use TypeFilter instead of filter from session, then update from request
+      $shiftsFilter->loadSerialized($typeFilter['serialized']);
+      update_ShiftsFilter($shiftsFilter, auth()->can('user_shifts_admin'), load_days());
+      $shiftsFilter->setShowFilter(true);
+    } else {
+      //3:
+      //A TypeFilter was found for the user and filter is hidden
+      //-> Use TypeFilter instead of filter from session, dont use request data
+      $shiftsFilter->loadSerialized($typeFilter['serialized']);
+      $shiftsFilter->setUserShiftsAdmin(auth()->can('user_shifts_admin'));
+      $shiftsFilter->setShowFilter(false);
     }
-
-    $shiftsFilter = new ShiftsFilter();
-    $shiftsFilter->sessionImport($session->get('shifts-filter'));
-    update_ShiftsFilter($shiftsFilter, auth()->can('user_shifts_admin'), $days);
     $session->set('shifts-filter', $shiftsFilter->sessionExport());
-
-    $shiftCalendarRenderer = shiftCalendarRendererByShiftFilter($shiftsFilter);
 
     if (empty($user->api_key)) {
         User_reset_api_key($user, false);
     }
-
-    $filled = [
-        [
-            'id'   => '1',
-            'name' => __('occupied')
-        ],
-        [
-            'id'   => '0',
-            'name' => __('free')
-        ]
-    ];
-    $start_day = date('Y-m-d', $shiftsFilter->getStartTime());
-    $start_time = date('H:i', $shiftsFilter->getStartTime());
-    $end_day = date('Y-m-d', $shiftsFilter->getEndTime());
-    $end_time = date('H:i', $shiftsFilter->getEndTime());
 
     if (config('signup_requires_arrival') && !$user->state->arrived) {
         info(render_user_arrived_hint());
@@ -227,60 +244,103 @@ function view_user_shifts()
     return page([
         div('col-md-12', [
             msg(),
-            view(__DIR__ . '/../../resources/views/pages/user-shifts.html', [
-                'title'         => shifts_title(),
-                'room_select'   => make_select($rooms, $shiftsFilter->getRooms(), 'rooms', __('Rooms')),
-                'start_select'  => html_select_key(
-                    'start_day',
-                    'start_day',
-                    array_combine($days, $days),
-                    $start_day
-                ),
-                'start_time'    => $start_time,
-                'end_select'    => html_select_key(
-                    'end_day',
-                    'end_day',
-                    array_combine($days, $days),
-                    $end_day
-                ),
-                'end_time'      => $end_time,
-                'type_select'   => make_select(
-                    $types,
-                    $shiftsFilter->getTypes(),
-                    'types',
-                    __('Angeltypes') . '<sup>1</sup>',
-                    [
-                        button(
-                            'javascript: checkOwnTypes(\'selection_types\', ' . json_encode($ownTypes) . ')',
-                            __('Own'),
-                            'hidden-print'
-                        ),
-                    ]
-                ),
-                'filled_select' => make_select($filled, $shiftsFilter->getFilled(), 'filled', __('Occupancy')),
-                'task_notice'   =>
-                    '<sup>1</sup>'
-                    . __('The tasks shown here are influenced by the angeltypes you joined already!')
-                    . ' <a href="' . page_link_to('angeltypes', ['action' => 'about']) . '">'
-                    . __('Description of the jobs.')
-                    . '</a>',
-                'shifts_table'  => msg() . $shiftCalendarRenderer->render(),
-                'ical_text'     => ical_hint(),
-                'filter'        => __('Filter'),
-                'set_yesterday' => __('Yesterday'),
-                'set_today'     => __('Today'),
-                'set_tomorrow'  => __('Tomorrow'),
-                'set_last_8h'   => __('last 8h'),
-                'set_last_4h'   => __('last 4h'),
-                'set_next_4h'   => __('next 4h'),
-                'set_next_8h'   => __('next 8h'),
-                'buttons'       => button(
-                    public_dashboard_link(),
-                    glyph('dashboard') . __('Public Dashboard')
-                )
-            ])
-        ])
-    ]);
+            render_shift_filter($shiftsFilter, $ownTypes, $days, $rooms, $types, shifts_title(), 'Filter'),
+            msg(),
+            shiftCalendarRendererByShiftFilter($shiftsFilter)->render(),
+            '<div class="hidden-print">',
+            ical_hint(),
+            '</div>'
+          ])
+        ]);
+}
+
+
+/**
+ * Render given ShiftsFilter
+ *
+ * @param ShiftsFilter  $shiftsFilter      The shifts filter to use
+ * @param int[]      $ownTypes          The types to select with the "Own Types" Button
+ * @param int[]      $days
+ * @param int[]      $rooms
+ * @param int[]      $types
+ */
+function render_shift_filter($shiftsFilter, $ownTypes, $days, $rooms, $types, $title, $submit)
+{
+  //Dont render the filter if user is not allowed to change it
+  if(!$shiftsFilter->isShowFilter())
+  {
+    return '';
+  }
+
+  $start_day = date('Y-m-d', $shiftsFilter->getStartTime());
+  $start_time = date('H:i', $shiftsFilter->getStartTime());
+  $end_day = date('Y-m-d', $shiftsFilter->getEndTime());
+  $end_time = date('H:i', $shiftsFilter->getEndTime());
+
+
+
+
+  $filled = [
+      [
+          'id'   => '1',
+          'name' => __('occupied')
+      ],
+      [
+          'id'   => '0',
+          'name' => __('free')
+      ]
+  ];
+
+  return view(__DIR__ . '/../../resources/views/pages/shift-filter.html', [
+      'title'         => $title,
+      'room_select'   => make_select($rooms, $shiftsFilter->getRooms(), 'rooms', __('Rooms')),
+      'start_select'  => html_select_key(
+          'start_day',
+          'start_day',
+          array_combine($days, $days),
+          $start_day
+      ),
+      'start_time'    => $start_time,
+      'end_select'    => html_select_key(
+          'end_day',
+          'end_day',
+          array_combine($days, $days),
+          $end_day
+      ),
+      'end_time'      => $end_time,
+      'type_select'   => make_select(
+          $types,
+          $shiftsFilter->getTypes(),
+          'types',
+          __('Angeltypes') . '<sup>1</sup>',
+          [
+              button(
+                  'javascript: checkOwnTypes(\'selection_types\', ' . json_encode($ownTypes) . ')',
+                  __('Own'),
+                  'hidden-print'
+              ),
+          ]
+      ),
+      'filled_select' => make_select($filled, $shiftsFilter->getFilled(), 'filled', __('Occupancy')),
+      'task_notice'   =>
+          '<sup>1</sup>'
+          . __('The tasks shown here are influenced by the angeltypes you joined already!')
+          . ' <a href="' . page_link_to('angeltypes', ['action' => 'about']) . '">'
+          . __('Description of the jobs.')
+          . '</a>',
+      'filter'        => __($submit),
+      'set_yesterday' => __('Yesterday'),
+      'set_today'     => __('Today'),
+      'set_tomorrow'  => __('Tomorrow'),
+      'set_last_8h'   => __('last 8h'),
+      'set_last_4h'   => __('last 4h'),
+      'set_next_4h'   => __('next 4h'),
+      'set_next_8h'   => __('next 8h'),
+      'buttons'       => button(
+          public_dashboard_link(),
+          glyph('dashboard') . __('Public Dashboard')
+      )
+  ]);
 }
 
 /**
