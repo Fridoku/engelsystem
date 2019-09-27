@@ -40,7 +40,7 @@ class AddTypeFiltersFeature extends Migration
                 VALUES ("admin_type_filters", "Setting default shift filters for groups");
         ');
 
-        // Add permissions to Bürokraten and above to set group filters
+        // Add permissions to Bürokraten and above to set type filters
         $connection->unprepared('
                 INSERT
                 INTO `GroupPrivileges` (`group_id`, `privilege_id`)
@@ -56,7 +56,7 @@ class AddTypeFiltersFeature extends Migration
     {
         $connection = $this->schema->getConnection();
 
-        // Remove permissions to Bürokraten and above to set group filters
+        // Remove permissions to Bürokraten and above to set type filters
         $connection->unprepared('
                 DELETE
                 FROM `GroupPrivileges`
@@ -81,7 +81,7 @@ class AddTypeFiltersFeature extends Migration
                     DROP `type_filter`;
         ');
 
-        //Delete Table with group filters
+        //Delete Table with type filters
         $this->schema->dropIfExists('TypeFilters');
 
     }

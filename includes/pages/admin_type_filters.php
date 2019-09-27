@@ -215,8 +215,10 @@ function Filter_edit_view($filter)
   //Create the array for the table
   $types_html = [];
   $types_checked = [];
-  foreach($types as $type){
-    if($type['type_filter'] == $filter['id']) $types_checked[] = $type['id'];
+  if (isset($types['type_filter'])) {
+    foreach($types as $type){
+      if($type['type_filter'] == $filter['id']) $types_checked[] = $type['id'];
+    }
   }
 
   //Render the HTML for a shift filter and modify if so we can add more form elements

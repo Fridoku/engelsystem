@@ -104,7 +104,7 @@ function make_navigation()
         'admin_active'       => __('Active angels'),
         'admin_user'         => __('All Angels'),
         'admin_free'         => __('Free angels'),
-        'admin_type_filters'  => __('Group Filters'),
+        'admin_type_filters'  => __('Type Filters'),
         'admin_questions'    => __('Answer questions'),
         'shifttypes'         => __('Shifttypes'),
         'admin_shifts'       => __('Create shifts'),

@@ -133,7 +133,7 @@ function load_types()
 {
     $user = auth()->user();
 
-    if (!count(DB::select('SELECT `id`, `name` FROM `AngelTypes` WHERE `restricted` = 0'))) {
+    if (!count(DB::select('SELECT `id`, `name` , `type_filter` FROM `AngelTypes` WHERE `restricted` = 0'))) {
         error(__('The administration has not configured any angeltypes yet - or you are not subscribed to any angeltype.'));
         redirect(page_link_to('/'));
     }
@@ -141,7 +141,6 @@ function load_types()
             SELECT
                 `AngelTypes`.`id`,
                 `AngelTypes`.`name`,
-                `AngelTypes`.`type_filter`,
                 (
                     `AngelTypes`.`restricted`=0
                     OR (
@@ -209,7 +208,9 @@ function view_user_shifts()
       //1:
       //No TypeFilter was found for the user
       //-> Filter is restored from the session and then updated from the request
-      $shiftsFilter->sessionImport($session->get('shifts-filter'));
+      if($session->has('shifts-filter')) {
+        $shiftsFilter->sessionImport($session->get('shifts-filter'));
+      }
       update_ShiftsFilter($shiftsFilter, auth()->can('user_shifts_admin'), load_days());
     } elseif ($typeFilter['showFilter']) {
       //2:
