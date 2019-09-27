@@ -6,15 +6,15 @@ use Engelsystem\ShiftsFilter;
 /**
  * @return string
  */
-function admin_groupFilters_title()
+function admin_type_filters_title()
 {
-    return __('GroupFilters');
+    return __('Type Filters');
 }
 
 /**
  * @return string
  */
-function admin_groupFilters()
+function admin_type_filters()
 {
   $session = session();
   $request = request();
@@ -22,31 +22,31 @@ function admin_groupFilters()
 
   if (!$request->has('action')) {
 
-    $groupFilters = DB::select('
+    $typeFilters = DB::select('
         SELECT `id` , `name`, `priority`,
               (SELECT GROUP_CONCAT(`AngelTypes`.`name` ORDER BY `AngelTypes`.`name`)
                FROM `AngelTypes`
-               WHERE `AngelTypes`.`type_filter` = `GroupFilters`.`id` )
+               WHERE `AngelTypes`.`type_filter` = `TypeFilters`.`id` )
                AS `combinedTypes`
-        FROM `GroupFilters`
+        FROM `TypeFilters`
         ORDER BY `priority` DESC, `name`
     ');
 
     $filter_table = [];
-    foreach ($groupFilters as $filter) {
+    foreach ($typeFilters as $filter) {
       $filter_table[] = [
           'name'       => $filter['name'],
           'types' => $filter['combinedTypes'],
           'priority' => $filter['priority'],
           'actions'    => table_buttons([
             button(
-              page_link_to('admin_group_filters',
+              page_link_to('admin_type_filters',
                   ['action' => 'edit', 'id' => $filter['id']]),
               __('edit'),
               'btn-xs'
             ),
             button(
-              page_link_to('admin_group_filters',
+              page_link_to('admin_type_filters',
                   ['action' => 'delete', 'id' => $filter['id']]),
               __('delete'),
               'btn-xs'
@@ -55,9 +55,9 @@ function admin_groupFilters()
       ];
     }
 
-    return page_with_title(admin_groupFilters_title(), [
+    return page_with_title(admin_type_filters_title(), [
         button(
-            page_link_to('admin_group_filters',
+            page_link_to('admin_type_filters',
                 ['action' => 'edit', 'id' => '0']),
             __('New Filter'),
             'add',
@@ -76,7 +76,7 @@ function admin_groupFilters()
       $filter = getFilter($request->input('id'));
       if ($filter == null){
         error(__('Filter ID not found.'), true);
-        redirect(page_link_to('admin_group_filters'));
+        redirect(page_link_to('admin_type_filters'));
       }
 
       switch ($request->input('action')) {
@@ -86,16 +86,16 @@ function admin_groupFilters()
         case 'delete':
           if ($filter['id'] == 0) {
             error(__('Cant delete filter ID 0'));
-            redirect(page_link_to('admin_group_filters'));
+            redirect(page_link_to('admin_type_filters'));
           }
           if ($request->hasPostData('delete')) {
             DB::delete('
-              DELETE FROM `GroupFilters`
+              DELETE FROM `TypeFilters`
               WHERE `id` = ?',
               [$filter['id']]
             );
             success(sprintf(__('Filter %s deleted.'), $filter['name']));
-            redirect(page_link_to('admin_group_filters'));
+            redirect(page_link_to('admin_type_filters'));
           }
           return Filter_delete_view($filter);
           break;
@@ -129,7 +129,7 @@ function Filter_save($id)
 
   if ($filter['id'] == 0) {
     DB::insert('
-      INSERT INTO `GroupFilters`
+      INSERT INTO `TypeFilters`
       (`name`, `showFilter`, `priority`, `serialized`)
       VALUES
       (?, ?, ?, ?)
@@ -138,7 +138,7 @@ function Filter_save($id)
   }
   else {
     DB::update('
-      UPDATE `GroupFilters` SET
+      UPDATE `TypeFilters` SET
       `name` = ?, `showFilter` = ?, `priority` = ?, `serialized` = ?
       WHERE
       `id` = ?
@@ -162,7 +162,7 @@ function Filter_save($id)
       ', [$filter['id'], $t]);
   }
     success(sprintf(__('Filter %s saved.'), $filter['name']));
-    redirect(page_link_to('admin_group_filters'));
+    redirect(page_link_to('admin_type_filters'));
     return;
 }
 
@@ -176,7 +176,7 @@ function Filter_delete_view($filter)
         info(sprintf(__('Do you want to delete filter %s?'), $filter['name']), true),
         form([
             buttons([
-                button(page_link_to('admin_group_filters'), glyph('remove') . __('cancel')),
+                button(page_link_to('admin_type_filters'), glyph('remove') . __('cancel')),
                 form_submit(
                     'delete',
                     glyph('ok') . __('delete'),
@@ -241,7 +241,7 @@ function Filter_edit_view($filter)
       $shiftsFilter_html,
 
 
-    ], page_link_to('admin_group_filters', ['action' => 'save', 'id' => $filter['id']])),
+    ], page_link_to('admin_type_filters', ['action' => 'save', 'id' => $filter['id']])),
   ]);
 }
 
@@ -261,7 +261,7 @@ function getFilter($id)
   else {
     $filter = DB::selectOne('
       SELECT *
-      FROM `GroupFilters`
+      FROM `TypeFilters`
       WHERE `id` = ?
       ORDER BY `Name`
     ', [$id]);

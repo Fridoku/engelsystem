@@ -184,8 +184,8 @@ function view_user_shifts()
 
     $typeFilter = DB::selectOne('
         SELECT `serialized`, `showFilter`
-        FROM `GroupFilters`
-        WHERE `GroupFilters`.`id` IN (
+        FROM `TypeFilters`
+        WHERE `TypeFilters`.`id` IN (
           SELECT `AngelTypes`.`type_filter`
           FROM `AngelTypes`
           WHERE `AngelTypes`.`id` IN (

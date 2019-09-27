@@ -198,9 +198,9 @@ class LegacyMiddleware implements MiddlewareInterface
                 $title = admin_free_title();
                 $content = admin_free();
                 return [$title, $content];
-            case 'admin_group_filters':
-                $title = admin_groupFilters_title();
-                $content = admin_groupFilters();
+            case 'admin_type_filters':
+                $title = admin_type_filters_title();
+                $content = admin_type_filters();
                 return [$title, $content];
             case 'admin_news':
                 require_once realpath(__DIR__ . '/../../includes/pages/admin_news.php');
