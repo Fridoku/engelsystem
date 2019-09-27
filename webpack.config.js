@@ -54,7 +54,7 @@ module.exports = {
         loader: 'babel-loader',
         query: { cacheDirectory: true },
       },
-      { test: /\.(eot|ttf|otf|svg|woff2?)(\?.*)?$/, loader: 'file-loader' },
+      { test: /\.(eot|ttf|otf|svg|png|woff2?)(\?.*)?$/, loader: 'file-loader' },
       { test: /\.json$/, loader: 'json-loader' },
       {
         test: /\.(less|css)$/,
